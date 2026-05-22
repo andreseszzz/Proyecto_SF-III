@@ -1,45 +1,48 @@
-# Reporte de Validación y Calidad - Proyecto S3
+# Reporte de Validación - Proyecto S3
 Fecha: 2026-05-21
-Estado: Completado y Validado
 
-## 1. Fase de Lógica de Negocio ( matriculas-service )
-**Objetivo**: Validar que el registro de matrículas cumpla las reglas de negocio.
-- [x] **Validación de Estudiante**: Implementada. El sistema consulta al `estudiantes-service` antes de matricular.
-- [x] **Validación de Curso**: Implementada. El sistema consulta al `cursos-service` antes de matricular.
-- [x] **Prevención de Duplicados**: Implementada. Evita que un estudiante se matricule dos veces en el mismo curso activo.
-- [x] **Manejo de Anulaciones**: Implementado mediante cambio de estado a 'ANULADA'.
+## 1. Lógica de Negocio (matriculas-service)
 
-## 2. Fase de Seguridad y Roles
-**Objetivo**: Verificar que el acceso a los recursos esté restringido según el rol del usuario.
-- [x] **Configuración de Roles**:
-    - ADMIN: Acceso total (CRUD).
+- **Validación de Estudiante**: Se consulta al `estudiantes-service` antes de matricular.
+- **Validación de Curso**: Se consulta al `cursos-service` antes de matricular.
+- **Prevención de Duplicados**: Se evita que un estudiante se matricule dos veces en el mismo curso activo.
+- **Manejo de Anulaciones**: Las matrículas se pueden anular cambiando el estado a 'ANULADA'.
+
+## 2. Seguridad y Roles
+
+- **Configuración de Roles**:
+    - ADMIN: Acceso completo (CRUD).
     - DOCENTE: Solo lectura en Estudiantes y Matrículas.
     - ESTUDIANTE: Solo lectura en Cursos.
-- [x] **Respuestas Uniformes**: Implementado `ApiErrorResponse` con códigos como `AUTH_FORBIDDEN` y `AUTH_HEADER_MISSING` en todos los servicios.
-- [x] **Filtros de Seguridad**: Implementado `AuthValidationFilter` alineado con el `auth-service`.
+- **Respuestas de Error**: Se usa `ApiErrorResponse` con códigos como `AUTH_FORBIDDEN` y `AUTH_HEADER_MISSING`.
+- **Filtros de Seguridad**: Se implementó `AuthValidationFilter` alineado con el `auth-service`.
 
-## 3. Fase de Despliegue y Pruebas Funcionales (Ejecución Local)
-**Objetivo**: Validar el flujo completo de la aplicación.
+## 3. Pruebas Funcionales
+
+Se validó el flujo completo ejecutando los servicios localmente.
 
 ### 3.1 Pruebas de Autenticación
 
 #### Test 1: Login de Administrador
-**Comando ejecutado:**
+
+**Comando:**
 ```bash
 curl -X POST http://localhost:8081/auth/login \
 -H "Content-Type: application/json" \
 -d '{"username": "admin", "password": "admin123"}'
 ```
-**Respuesta del Servidor:**
+**Respuesta:**
 ```json
 {"token": "eyJhbG...ttbA","username":"admin","role":"ADMIN"}
 ```
-**Resultado:** ✅ EXITOSO. El servicio de autenticación validó las credenciales y entregó un token con el rol ADMIN.
+
+La autenticación funcionó correctamente, se obtuvo el token con rol ADMIN.
 
 ### 3.2 Pruebas de Integración de Servicios
 
 #### Test 2: Acceso a Estudiantes con Token Válido
-**Comando ejecutado:**
+
+**Comando:**
 ```bash
 # 1. Obtención de token dinámico
 TOKEN=$(curl -s -X POST http://localhost:8081/auth/login -d '{"username": "admin", "password": "admin123"}' | jq -r '.token')
@@ -48,7 +51,7 @@ TOKEN=$(curl -s -X POST http://localhost:8081/auth/login -d '{"username": "admin
 curl -X GET http://localhost:8082/api/estudiantes \
 -H "Authorization: Bearer $TOKEN"
 ```
-**Respuesta del Servidor:**
+**Respuesta:**
 ```json
 {
   "success": true,
@@ -64,19 +67,21 @@ curl -X GET http://localhost:8082/api/estudiantes \
   ]
 }
 ```
-**Resultado:** ✅ EXITOSO. Se confirma la comunicación entre `estudiantes-service` y `auth-service`.
+
+Se confirmó que `estudiantes-service` y `auth-service` se comunican correctamente.
 
 ### 3.3 Pruebas de Reglas de Negocio en Vivo
 
 #### Test 3: Registro de Matrícula Correcta
-**Comando ejecutado:**
+
+**Comando:**
 ```bash
 curl -X POST http://localhost:8084/api/matriculas \
 -H "Authorization: Bearer $TOKEN" \
 -H "Content-Type: application/json" \
 -d '{"estudianteId": 1, "cursoId": 1}'
 ```
-**Respuesta del Servidor:**
+**Respuesta:**
 ```json
 {
   "success": true,
@@ -90,10 +95,12 @@ curl -X POST http://localhost:8084/api/matriculas \
   }
 }
 ```
-**Resultado:** ✅ EXITOSO. Se validó la existencia de estudiante y curso.
+
+La matrícula se registró correctamente, validando la existencia del estudiante y curso.
 
 #### Test 4: Validación de Matrícula Duplicada
-**Comando ejecutado:**
+
+**Comando:**
 (Se repite la misma petición del Test 3)
 ```bash
 curl -X POST http://localhost:8084/api/matriculas \
@@ -101,7 +108,7 @@ curl -X POST http://localhost:8084/api/matriculas \
 -H "Content-Type: application/json" \
 -d '{"estudianteId": 1, "cursoId": 1}'
 ```
-**Respuesta del Servidor:**
+**Respuesta:**
 ```json
 {
   "success": false,
@@ -109,14 +116,16 @@ curl -X POST http://localhost:8084/api/matriculas \
   "data": null
 }
 ```
-**Resultado:** ✅ EXITOSO. Se impide la duplicidad de matrícula activa.
+
+La validación de duplicados funcionó, se rechazó la segunda matrícula.
 
 ### 3.4 Validación de Seguridad por Roles (Acceso Prohibido)
 
 #### Test 5: Intento de Eliminación con Rol Insuficiente
-**Escenario**: Un usuario con rol `DOCENTE` intenta eliminar un estudiante (solo ADMIN puede).
 
-**Comando ejecutado:**
+Un usuario con rol `DOCENTE` intenta eliminar un estudiante (solo ADMIN puede).
+
+**Comando:**
 ```bash
 # Obtención de token de DOCENTE
 TOKEN_DOCENTE=$(curl -s -X POST http://localhost:8081/auth/login \
@@ -126,7 +135,7 @@ TOKEN_DOCENTE=$(curl -s -X POST http://localhost:8081/auth/login \
 curl -X DELETE http://localhost:8082/api/estudiantes/1 \
 -H "Authorization: Bearer $TOKEN_DOCENTE"
 ```
-**Respuesta del Servidor:**
+**Respuesta:**
 ```json
 {
   "success": false,
@@ -137,8 +146,14 @@ curl -X DELETE http://localhost:8082/api/estudiantes/1 \
   "timestamp": "2026-05-21T19:21:18.005635187"
 }
 ```
-**Resultado:** ✅ EXITOSO. El sistema bloqueó el acceso devolviendo el código `403 Forbidden` con la estructura uniforme.
+
+El acceso se bloqueó correctamente con código 403.
 
 ---
-## Conclusiones Finales
-El proyecto cumple con todos los requerimientos funcionales, arquitectónicos y de seguridad definidos en la guía general y las instrucciones específicas de cada módulo. Todos los servicios están integrados y operativos.
+## Conclusiones
+
+Todos los servicios se encuentran integrados y funcionando. Se validaron correctamente:
+- Las reglas de negocio en matriculas-service
+- Los mecanismos de seguridad y roles
+- La integración entre servicios
+- El manejo de errores
